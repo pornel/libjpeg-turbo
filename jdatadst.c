@@ -243,8 +243,8 @@ jpeg_stdio_dest (j_compress_ptr cinfo, FILE *outfile)
  */
 
 GLOBAL(void)
-jpeg_mem_dest (j_compress_ptr cinfo,
-               unsigned char **outbuffer, unsigned long *outsize)
+jpeg_mem_dest_internal (j_compress_ptr cinfo,
+               unsigned char **outbuffer, unsigned long *outsize, int pool_id)
 {
   my_mem_dest_ptr dest;
 
@@ -254,11 +254,8 @@ jpeg_mem_dest (j_compress_ptr cinfo,
   /* It's only safe to reuse existing dest if it has the same type */
   if (cinfo->dest == NULL ||
       cinfo->dest->init_destination != init_mem_destination) {
-    /* The destination object is made permanent so that multiple JPEG images
-     * can be written to the same file without re-executing jpeg_stdio_dest.
-     */
     cinfo->dest = (struct jpeg_destination_mgr *)
-      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_PERMANENT,
+      (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, pool_id,
                                   sizeof(my_mem_destination_mgr));
   }
 
@@ -281,4 +278,15 @@ jpeg_mem_dest (j_compress_ptr cinfo,
   dest->pub.next_output_byte = dest->buffer = *outbuffer;
   dest->pub.free_in_buffer = dest->bufsize = *outsize;
 }
+
+GLOBAL(void)
+jpeg_mem_dest (j_compress_ptr cinfo,
+               unsigned char **outbuffer, unsigned long *outsize)
+{
+  /* The destination object is made permanent so that multiple JPEG images
+   * can be written to the same file without re-executing jpeg_stdio_dest.
+   */
+  jpeg_mem_dest_internal(cinfo, outbuffer, outsize, JPOOL_PERMANENT);
+}
+
 #endif
